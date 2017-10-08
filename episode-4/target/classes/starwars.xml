@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:api-platform-gw="http://www.mulesoft.org/schema/mule/api-platform-gw" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/api-platform-gw http://www.mulesoft.org/schema/mule/api-platform-gw/current/mule-api-platform-gw.xsd">
+    <http:listener-config name="starwars-httpListenerConfig" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <apikit:config name="starwars-config" raml="starwars.raml" consoleEnabled="false" doc:name="Router"/>
+    <http:request-config name="HTTP_Request_Configuration_SWAPI" protocol="HTTPS" host="swapi.co" port="443" basePath="/api" doc:name="HTTP Request Configuration"/>
+    <api-platform-gw:api apiName="StarWars" version="v4" flowRef="starwars-main" create="true" apikitRef="starwars-config" doc:name="API Autodiscovery"/>
+    <flow name="starwars-main">
+        <http:listener config-ref="starwars-httpListenerConfig" path="/api/*" doc:name="HTTP"/>
+        <apikit:router config-ref="starwars-config" doc:name="APIkit Router"/>
+        <exception-strategy ref="starwars-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <flow name="starwars-console">
+        <http:listener config-ref="starwars-httpListenerConfig" path="/console/*" doc:name="HTTP"/>
+        <apikit:console config-ref="starwars-config" doc:name="APIkit Console"/>
+    </flow>
+    <flow name="get:/character:starwars-config">
+        <http:request config-ref="HTTP_Request_Configuration_SWAPI" path="people" method="GET" doc:name="Get Character Information" metadata:id="501fb8f4-7ec4-44c7-baa1-2dd93c9b7ddd"/>
+        <dw:transform-message doc:name="Map Character Information">
+            <dw:input-payload doc:sample="characterResult.json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload.results map ((result , indexOfResult) -> {
+	birth_year: result.birth_year,
+	eye_color: result.eye_color,
+	gender: result.gender,
+	hair_color: result.hair_color,
+	height: result.height as :number,
+	mass: result.mass as :number,
+	name: result.name,
+	skin_color: result.skin_color
+})]]></dw:set-payload>
+        </dw:transform-message>
+
+    </flow>
+    <flow name="get:/opening_crawl:starwars-config">
+        <http:request config-ref="HTTP_Request_Configuration_SWAPI" path="/films/1" method="GET" doc:name="Get Film Information" metadata:id="c47ff481-65d6-4de2-ae45-536490c7255e"/>
+        <dw:transform-message doc:name="Map Film Information">
+            <dw:input-payload doc:sample="films_response.json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	opening_crawl: payload.opening_crawl
+}]]></dw:set-payload>
+        </dw:transform-message>
+
+    </flow>
+    <apikit:mapping-exception-strategy name="starwars-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" doc:name="Set Payload"/>
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
+</mule>

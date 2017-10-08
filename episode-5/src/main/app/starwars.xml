@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:api-platform-gw="http://www.mulesoft.org/schema/mule/api-platform-gw" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
-http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/api-platform-gw http://www.mulesoft.org/schema/mule/api-platform-gw/current/mule-api-platform-gw.xsd">
     <http:listener-config name="starwars-httpListenerConfig" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
     <apikit:config name="starwars-config" raml="starwars.raml" consoleEnabled="false" doc:name="Router"/>
-    <http:request-config name="HTTP_Request_Configuration" protocol="HTTPS" host="swapi.co" port="443" basePath="/api" doc:name="HTTP Request Configuration"/>
+    <http:request-config name="HTTP_Request_Configuration_SWAPI" protocol="HTTPS" host="swapi.co" port="443" basePath="/api" doc:name="HTTP Request Configuration"/>
+    <api-platform-gw:api apiName="StarWars" version="v5" flowRef="starwars-main" create="true" apikitRef="starwars-config" doc:name="API Autodiscovery"/>
     <flow name="starwars-main">
         <http:listener config-ref="starwars-httpListenerConfig" path="/api/*" doc:name="HTTP"/>
         <apikit:router config-ref="starwars-config" doc:name="APIkit Router"/>
@@ -17,29 +19,42 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
         <apikit:console config-ref="starwars-config" doc:name="APIkit Console"/>
     </flow>
     <flow name="get:/character:starwars-config">
-        <http:request config-ref="HTTP_Request_Configuration" path="people" method="GET" doc:name="Get Character Information" metadata:id="501fb8f4-7ec4-44c7-baa1-2dd93c9b7ddd"/>
-        <dw:transform-message doc:name="Transform Message">
-            <dw:input-payload doc:sample="characterResult.json"/>
+        <http:request config-ref="HTTP_Request_Configuration_SWAPI" path="people" method="GET" doc:name="Get Character Information"/>
+        <dw:transform-message doc:name="Map Character Information">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
 ---
-payload.results map ((result , indexOfResult) -> {
-	birth_year: result.birth_year,
-	eye_color: result.eye_color,
-	gender: result.gender,
-	hair_color: result.hair_color,
-	height: result.height as :number,
-	mass: result.mass as :number,
-	name: result.name,
-	skin_color: result.skin_color
-})]]></dw:set-payload>
+{
+}]]></dw:set-payload>
+        </dw:transform-message>
+
+    </flow>
+    <flow name="get:/character/jedi:starwars-config">
+        <http:request config-ref="HTTP_Request_Configuration_SWAPI" path="people/1" method="GET" doc:name="Get Jedi Information" metadata:id="f6358c73-0d5c-4c4d-86f3-e9eac2c9d430"/>
+        <dw:transform-message doc:name="Map Jedi Information">
+            <dw:input-payload doc:sample="jediResult.json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+[{
+	birth_year: payload.birth_year,
+	eye_color: payload.eye_color,
+	gender: payload.gender,
+	hair_color: payload.hair_color,
+	height: payload.height as :number,
+	homeworld: payload.homeworld,
+	mass: payload.mass as :number,
+	name: payload.name,
+	preferred_weapon: "lightsaber",
+	skin_color: payload.skin_color
+}]]]></dw:set-payload>
         </dw:transform-message>
 
     </flow>
     <flow name="get:/opening_crawl:starwars-config">
-        <http:request config-ref="HTTP_Request_Configuration" path="/films/1" method="GET" doc:name="Get Film Information" metadata:id="c47ff481-65d6-4de2-ae45-536490c7255e"/>
-        <dw:transform-message doc:name="Transform Message">
-            <dw:input-payload doc:sample="films_response.json"/>
+        <http:request config-ref="HTTP_Request_Configuration_SWAPI" path="/films/2" method="GET" doc:name="Get Film Information" metadata:id="b42c14b1-99a9-465a-b193-c57442df389d"/>
+        <dw:transform-message doc:name="Extract Opening Crawl">
+            <dw:input-payload doc:sample="filmResult.json"/>
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
 ---
@@ -48,6 +63,10 @@ payload.results map ((result , indexOfResult) -> {
 }]]></dw:set-payload>
         </dw:transform-message>
 
+    </flow>
+    <flow name="post:/character/jedi:application/json:starwars-config">
+        <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+        <set-payload value="{&#xA;&quot;message&quot; : &quot;Jedi Character created successfully&quot;&#xA;}" doc:name="Set Payload"/>
     </flow>
     <apikit:mapping-exception-strategy name="starwars-apiKitGlobalExceptionMapping">
         <apikit:mapping statusCode="404">
