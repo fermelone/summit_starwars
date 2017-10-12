@@ -1,0 +1,11 @@
+{
+    "inputMessageMetadata": {},
+    "outputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "jediResult"
+        }
+    },
+    "id": "f6358c73-0d5c-4c4d-86f3-e9eac2c9d430",
+    "version": "5.2.0.0"
+}
